@@ -490,5 +490,119 @@ document.querySelectorAll('.ov').forEach(ov=>{ov.setAttribute('data-lenis-preven
  new MutationObserver(()=>{if(anyOpen()){if(!pushed){try{history.pushState({ov:1},'');pushed=true}catch(e){}}}else if(pushed){setTimeout(()=>{if(!anyOpen()&&pushed){pushed=false;skip=true;history.back()}},60)}}).observe(ov,{attributes:true,attributeFilter:['class']})});
 addEventListener('popstate',()=>{if(skip){skip=false;return}if(pushed){pushed=false;const o=anyOpen();if(o)o.dispatchEvent(new MouseEvent('click',{bubbles:true}))}})})();
 </script>
+<!-- ===== assistente de dúvidas embutido ===== -->
+<style>
+.cfab{position:fixed;right:16px;bottom:16px;z-index:80;display:flex;align-items:center;gap:10px;transition:bottom .35s cubic-bezier(.2,.7,.1,1)}
+body:has(.cartbar.show) .cfab{bottom:92px}
+.cfab button{width:58px;height:58px;border-radius:50%;border:0;background:#1b1715;color:#fff;display:grid;place-items:center;cursor:pointer;box-shadow:0 12px 26px -8px rgba(0,0,0,.55);position:relative}
+.cfab button svg{width:26px;height:26px}
+.cfab button i{position:absolute;top:2px;right:2px;width:14px;height:14px;border-radius:50%;background:#d7261e;border:2px solid #fff}
+.cfab .tip{background:#fff;color:#1b1715;border-radius:14px 14px 4px 14px;padding:9px 12px;font:600 .86rem/1.3 Inter,system-ui,sans-serif;box-shadow:0 10px 24px -12px rgba(0,0,0,.5);max-width:220px;opacity:0;transform:translateY(6px);transition:all .35s;pointer-events:none}
+.cfab .tip.on{opacity:1;transform:none;pointer-events:auto;cursor:pointer}
+.cpanel{position:fixed;right:16px;bottom:16px;z-index:95;width:min(380px,calc(100vw - 32px));height:min(580px,calc(100svh - 32px));background:#fff;border-radius:20px;box-shadow:0 30px 60px -20px rgba(0,0,0,.55);display:flex;flex-direction:column;overflow:hidden;opacity:0;transform:translateY(16px) scale(.98);pointer-events:none;transition:opacity .25s,transform .3s cubic-bezier(.2,.7,.1,1);font-family:Inter,system-ui,sans-serif;color:#1b1715}
+.cpanel.on{opacity:1;transform:none;pointer-events:auto}
+.cp-h{display:flex;align-items:center;gap:10px;padding:12px 12px 12px 14px;background:#1b1715;color:#fff}
+.cp-h .av{width:36px;height:36px;border-radius:50%;background:#2a2421;display:grid;place-items:center;flex:0 0 36px}
+.cp-h b{display:block;font-size:.95rem}.cp-h small{display:block;font-size:.72rem;color:#c9bfb3}
+.cp-h button{margin-left:auto;width:36px;height:36px;border-radius:50%;border:0;background:rgba(255,255,255,.12);color:#fff;font-size:1.2rem;cursor:pointer}
+.cp-b{flex:1;overflow-y:auto;padding:14px 12px;display:flex;flex-direction:column;gap:8px;background:#f5f0e9;overscroll-behavior:contain}
+.cm{max-width:86%;padding:9px 12px;border-radius:14px;font-size:.9rem;line-height:1.42;white-space:pre-wrap;animation:cmIn .2s ease-out}
+@keyframes cmIn{from{opacity:0;transform:translateY(6px)}}
+.cm.bot{background:#fff;align-self:flex-start;border-bottom-left-radius:4px;box-shadow:0 1px 0 rgba(0,0,0,.06)}
+.cm.me{background:#d7261e;color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
+.cm b{font-weight:700}
+.cm .act{display:inline-flex;margin:8px 6px 0 0;padding:7px 12px;border-radius:99px;border:0;background:#1b1715;color:#fff;font:700 .8rem Inter,sans-serif;cursor:pointer;text-decoration:none}
+.cm .act.alt{background:#efe6da;color:#1b1715}
+.cdots{align-self:flex-start;background:#fff;border-radius:14px;padding:11px 13px;display:flex;gap:4px}
+.cdots i{width:6px;height:6px;border-radius:50%;background:#b8aea4;animation:cBl 1s infinite}
+.cdots i:nth-child(2){animation-delay:.15s}.cdots i:nth-child(3){animation-delay:.3s}
+@keyframes cBl{50%{opacity:.3}}
+.cp-q{display:flex;gap:6px;overflow-x:auto;padding:8px 12px;background:#f5f0e9;border-top:1px solid rgba(27,23,21,.08);scrollbar-width:none}
+.cp-q::-webkit-scrollbar{display:none}
+.cp-q button{flex:0 0 auto;border:1.5px solid rgba(27,23,21,.14);background:#fff;border-radius:99px;padding:7px 12px;font:600 .8rem Inter,sans-serif;color:#1b1715;cursor:pointer}
+.cp-f{display:flex;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid rgba(27,23,21,.08)}
+.cp-f input{flex:1;min-width:0;border:1.5px solid rgba(27,23,21,.14);border-radius:99px;padding:10px 14px;font:16px Inter,sans-serif;outline:none;color:#1b1715;background:#fff}
+.cp-f input:focus{border-color:#d7261e}
+.cp-f button{width:44px;height:44px;flex:0 0 44px;border-radius:50%;border:0;background:#d7261e;color:#fff;display:grid;place-items:center;cursor:pointer}
+.cp-note{font-size:.68rem;color:#8a8076;text-align:center;padding:0 12px 8px;background:#fff}
+@media(max-width:560px){.cpanel{inset:0;right:0;bottom:0;width:100%;height:100%;border-radius:0}}
+</style>
+<div class="cfab" id="cfab"><span class="tip" id="ctip">Dúvida? Pergunta aqui 👋</span><button type="button" id="cbtn" aria-label="Abrir assistente de dúvidas"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3C6.5 3 2 6.9 2 11.7c0 2.4 1.1 4.6 3 6.2L4.2 21l3.8-1.8c1.2.4 2.6.6 4 .6 5.5 0 10-3.9 10-8.7S17.5 3 12 3zm-4 9.9a1.2 1.2 0 1 1 0-2.4 1.2 1.2 0 0 1 0 2.4zm4 0a1.2 1.2 0 1 1 0-2.4 1.2 1.2 0 0 1 0 2.4zm4 0a1.2 1.2 0 1 1 0-2.4 1.2 1.2 0 0 1 0 2.4z"/></svg><i></i></button></div>
+<div class="cpanel" id="cpanel" role="dialog" aria-modal="false" aria-label="Assistente de dúvidas" data-lenis-prevent>
+ <div class="cp-h"><span class="av"><svg viewBox="0 0 48 48" width="26" height="26" aria-hidden="true"><path d="M24 8c2 5 8 8 8 15a8 8 0 0 1-16 0c0-3 1.5-5.5 3.5-7 0 3 1.5 4.5 3 5-1-4 0-9 1.5-13z" fill="#d7261e"/><rect x="12" y="34" width="24" height="3.4" rx="1.7" fill="#fff"/></svg></span><div><b>Assistente do Brasa</b><small id="csub">responde na hora · automático</small></div><button type="button" id="cx" aria-label="Fechar">×</button></div>
+ <div class="cp-b" id="cbody" aria-live="polite"></div>
+ <div class="cp-q" id="cq"></div>
+ <form class="cp-f" id="cf" autocomplete="off"><input id="cin" placeholder="Escreva sua dúvida…" maxlength="200" aria-label="Sua dúvida"><button type="submit" aria-label="Enviar"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M2 21 23 12 2 3v7l15 2-15 2z"/></svg></button></form>
+ <div class="cp-note">Demonstração · respostas automáticas com o cardápio da casa</div>
+</div>
+<script>
+(()=>{
+const $=s=>document.querySelector(s);
+const MENU=[
+ ['burgers-0','Pão, Carne e Queijo',22,'pão de leite, hambúrguer de 180 g defumado na churrasqueira e queijo prato',['pao carne','pao e queijo','mais simples','simples','barato']],
+ ['burgers-1','Clássico',25,'pão de leite, hambúrguer de 180 g defumado, queijo prato maçaricado e cebola branca assada com mix de pimentas',['classico']],
+ ['burgers-2','Tradicional',29,'pão de leite, maionese especial da casa, farofa, hambúrguer de 140 g defumado, queijo e vinagrete',['tradicional']],
+ ['burgers-3','Brasa Bacon',29,'pão de leite, maionese defumada, hambúrguer de 140 g defumado, cheddar ou prato e bacon caramelizado',['brasa bacon']],
+ ['burgers-4','Catu Brasa',32,'pão australiano, hambúrguer de 160 g defumado, catupiry, bacon caramelizado e sweet chilli',['catu','catupiry']],
+ ['burgers-5','Brasa Cheese',34,'pão australiano, maionese inglesa, farofa, hambúrguer de 160 g defumado, cheddar, prato e cebola caramelizada',['cheese']],
+ ['burgers-6','Brasa Supreme',34,'pão de leite, maionese de alho, hambúrguer de 180 g defumado, queijo prato, bacon caramelizado, vinagrete e cebolinha',['supreme','supremo','completo']],
+ ['burgers-7','Baguete de Alho e Churrasco',43,'baguete de parmesão com pasta de alho, iscas de churrasco com sal de parrilha, queijo maçaricado e vinagrete de abacaxi ou tomate',['baguete','churrasco']],
+ ['burgers-8','Costela Premium',35,'pão de leite, maionese de limão, farofa, costela desfiada com molho de queijo e cebola com ervas',['costela']]
+];
+const BEB=[['Refri lata',6],['Refri 600 ml',8],['Refri 2 L',15],['Iate',8]];
+const ACR=[['Carne de 140 g',8],['Carne de 160 g',10],['Carne de 180 g',12],['Cebola caramelizada',4],['Bacon',4],['Queijo',3],['Farofa',3],['Vinagrete',3],['Molho',3]];
+const brl=v=>'R$ '+v.toFixed(2).replace('.',',');
+const norm=s=>s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const md=s=>esc(s).replace(/\*(.+?)\*/g,'<b>$1</b>');
+function status(){const p=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',weekday:'short',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date()).map(x=>[x.type,x.value]));const d=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(p.weekday),m=(+p.hour)*60+(+p.minute),day=x=>x>=1&&x<=5;
+ if(day(d)&&m>=1140&&m<1380)return'Estamos *abertos agora*, até as 23h! 🔥';
+ if(day(d)&&m<1140)return'Ainda não abrimos. Hoje abre às *19h* e vai até as 23h — mas você já pode montar seu pedido.';
+ return'Agora estamos fechados. Funcionamos de *segunda a sexta, das 19h às 23h*.'+(d===5||d===6?' Voltamos segunda!':' Voltamos amanhã às 19h!')}
+const body=$('#cbody');let q=Promise.resolve(),started=false;
+function addMe(t){const e=document.createElement('div');e.className='cm me';e.textContent=t;body.appendChild(e);body.scrollTop=body.scrollHeight}
+function bot(t,acts=[]){q=q.then(()=>new Promise(r=>{const d=document.createElement('div');d.className='cdots';d.innerHTML='<i></i><i></i><i></i>';body.appendChild(d);body.scrollTop=body.scrollHeight;$('#csub').textContent='digitando…';
+ setTimeout(()=>{d.remove();const e=document.createElement('div');e.className='cm bot';e.innerHTML=md(t)+(acts.length?'<br>'+acts.map(a=>a.p?`<button type="button" class="act" data-go="${a.p}">${esc(a.l)}</button>`:a.s?`<button type="button" class="act alt" data-sec="${a.s}">${esc(a.l)}</button>`:`<a class="act alt" href="${a.h}" target="_blank" rel="noopener">${esc(a.l)}</a>`).join(''):'');body.appendChild(e);body.scrollTop=body.scrollHeight;$('#csub').textContent='responde na hora · automático';r()},Math.min(1100,380+t.length*4))}))}
+const QUICK=['Tá aberto?','Qual o mais pedido?','Quanto é o Brasa Bacon?','Tem acréscimo?','Onde fica?','Como pago?'];
+$('#cq').innerHTML=QUICK.map(x=>`<button type="button">${esc(x)}</button>`).join('');
+function findItem(t){return MENU.find(i=>[norm(i[1]),...i[4]].some(k=>t.includes(k)))}
+function answer(raw){const t=norm(raw);if(!t)return;const w=' '+t+' ';const has=(...a)=>a.some(x=>x.length<=3?w.includes(' '+x+' '):t.includes(x));
+ const it=findItem(t);
+ if(has('atendente','humano','pessoa','falar com','reclama','problema','errado','atras'))return bot('Sem problema! Pra falar com a equipe é só chamar no WhatsApp:',[{l:'Abrir WhatsApp',h:'https://wa.me/5533999817246'}]);
+ if(it)return bot(`*${it[1]}* — ${brl(it[2])}\n${it[3][0].toUpperCase()+it[3].slice(1)}.`,[{l:'Pedir este',p:it[0]}]);
+ if(has('aberto','abre','fecha','horario','hora','funciona'))return bot(status());
+ if(has('mais pedido','recomenda','sugest','melhor','qual pedir','indica','favorito'))return bot('O mais completo é o *Brasa Supreme* (R$ 34,00): 180 g defumado, bacon caramelizado, vinagrete e maionese de alho. Quem gosta de catupiry costuma ir no *Catu Brasa* (R$ 32,00).',[{l:'Ver Supreme',p:'burgers-6'},{l:'Ver Catu Brasa',p:'burgers-4'}]);
+ if(has('cardapio','menu','lanche','burger','hamburguer','opcoes','sabores','tem o que'))return bot('Todos feitos na *churrasqueira*, com sabor defumado:\n'+MENU.map(i=>`• ${i[1]} — ${brl(i[2])}`).join('\n'),[{l:'Ver cardápio com fotos',s:'cardapio'}]);
+ if(has('bebida','refri','coca','guarana','iate','beber','suco','agua'))return bot('Bebidas:\n'+BEB.map(b=>`• ${b[0]} — ${brl(b[1])}`).join('\n')+'\n\nÉ só adicionar no pedido, na aba Bebidas.');
+ if(has('acrescimo','adicional','extra','bacon','queijo','cheddar','carne a mais','dobro','duplo'))return bot('Dá pra turbinar qualquer burger:\n'+ACR.map(a=>`• ${a[0]} — ${brl(a[1])}`).join('\n')+'\n\nVocê escolhe na hora de pôr o lanche no pedido.');
+ if(has('tirar','sem cebola','sem vinagrete','sem maionese','alerg'))return bot('Pode tirar sim! Quando abrir o lanche, tem a opção *Tirar algum ingrediente* e um espaço pra observação.');
+ if(has('onde','endereco','localiza','fica','rua','chegar','retirar','buscar'))return bot('Estamos na *Av. Orlando Vaz, 559 – Centro*, Conselheiro Pena. Dá pra pedir e retirar no balcão.',[{l:'Ver no mapa',h:'https://www.google.com/maps/dir/?api=1&destination=-19.1759141,-41.4715853'}]);
+ if(has('pix','cartao','dinheiro','pagamento','pagar','pago','troco','debito','credito'))return bot('Você escolhe no fim do pedido: *Pix*, *dinheiro* (avisa pra quanto quer troco) ou *cartão* na entrega.');
+ if(has('entrega','delivery','entregam','taxa','frete','bairro','demora','tempo','motoboy'))return bot('Tem entrega sim! 🛵 Você coloca o endereço no fim do pedido e acompanha quando sai da cozinha.\n(Na demonstração a taxa por bairro ainda não está configurada.)');
+ if(has('pedir','pedido','quero','fome','comprar'))return bot('Bora! Escolhe o lanche no cardápio, toca no + e depois em *Ver pedido*. O pedido já cai direto na cozinha. 🔥',[{l:'Ir pro cardápio',s:'cardapio'}]);
+ if(has('oi','ola','boa noite','boa tarde','bom dia','eai','eae','opa','salve'))return bot('Opa! 👋 Pode perguntar: horário, preço de algum lanche, acréscimos, entrega ou pagamento.');
+ if(has('obrigad','valeu','vlw','tmj','show','top','beleza'))return bot('Nós que agradecemos! 🔥 Bom lanche!');
+ return bot('Hmm, essa eu não sei responder 😅 Posso ajudar com horário, cardápio, preços, acréscimos, entrega e pagamento. Ou fala direto com a equipe:',[{l:'Chamar no WhatsApp',h:'https://wa.me/5533999817246'}]);
+}
+const panel=$('#cpanel'),fab=$('#cfab');
+let cPushed=false;
+function openC(){if(!cPushed){try{history.pushState({chat:1},'');cPushed=true}catch(e){}}panel.classList.add('on');fab.style.visibility='hidden';$('#ctip').classList.remove('on');try{sessionStorage.setItem('brasa_tip','1')}catch(e){}
+ if(!started){started=true;bot('Oi! 👋 Sou o assistente do *Brasa Burguer*. Tira sua dúvida aqui: horário, preços, acréscimos, entrega…')}
+ if(matchMedia('(min-width:561px)').matches)setTimeout(()=>$('#cin').focus(),250)}
+function closeC(how){panel.classList.remove('on');fab.style.visibility='';if(cPushed&&how!=='pop'){cPushed=false;if(how!=='nav')history.back()}}
+addEventListener('popstate',()=>{if(panel.classList.contains('on')){cPushed=false;closeC('pop')}});
+$('#cbtn').onclick=openC;$('#ctip').onclick=openC;$('#cx').onclick=()=>closeC();
+addEventListener('keydown',e=>{if(e.key==='Escape'&&panel.classList.contains('on'))closeC()});
+$('#cf').addEventListener('submit',e=>{e.preventDefault();const v=$('#cin').value.trim();if(!v)return;addMe(v);$('#cin').value='';answer(v)});
+$('#cq').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;addMe(b.textContent);answer(b.textContent)});
+body.addEventListener('click',e=>{const g=e.target.closest('[data-go]'),s=e.target.closest('[data-sec]');
+ if(g){closeC('nav');const tmp=document.createElement('button');tmp.type='button';tmp.dataset.p=g.dataset.go;tmp.hidden=true;document.body.appendChild(tmp);tmp.click();tmp.remove()}
+ if(s){closeC('nav');const el=document.getElementById(s.dataset.sec);if(el)scrollTo({top:el.getBoundingClientRect().top+scrollY-64,behavior:'smooth'})}});
+let seen=false;try{seen=!!sessionStorage.getItem('brasa_tip')}catch(e){}
+if(!seen)setTimeout(()=>{if(!panel.classList.contains('on'))$('#ctip').classList.add('on')},4500);
+setTimeout(()=>$('#ctip').classList.remove('on'),14000);
+})();
+</script>
+
 </body>
 </html>
