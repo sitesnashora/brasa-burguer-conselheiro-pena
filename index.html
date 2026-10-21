@@ -479,6 +479,8 @@ function submit(f){const nome=f.nome.value.trim(),tel=f.tel.value.replace(/\D/g,
  $('#cartSheet [data-close]').onclick=()=>close($('#ovCart'));$('#cartSheet').scrollTop=0;
  [0,1,2].forEach(i=>setTimeout(()=>{const el=$('#l'+i);el&&el.classList.add('on')},RM?0:900+i*1500))}
 renderCart();
+/* link direto pro item: #p=burgers-3 */
+{const m=location.hash.match(/^#p=([\w-]+)$/);if(m&&PRODUCTS.some(x=>x.id===m[1])){history.replaceState(null,'',location.pathname+location.search);setTimeout(()=>{scrollToEl($('#cardapio'),-64);openItem(m[1])},400)}}
 })();
 
 /* modal: rolagem com mouse/dedo, X sempre visível, botão voltar do celular fecha */
